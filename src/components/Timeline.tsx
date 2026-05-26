@@ -32,11 +32,11 @@ export function Timeline({
         description: `Temp ${v.temperature}°C · RR ${v.respiratoryRate} · SBP ${v.systolicBP} · GCS ${v.gcsTotal} · qSOFA ${v.qsofa}`,
         vital: v,
       });
-      if (v.risk === "High" || v.risk === "Critical") {
+      if (v.risk === "Critical") {
         ev.push({
           id: `al-${v.id}`, type: "alert", timestamp: v.timestamp,
-          title: `${v.risk} risk alert`,
-          description: v.explanation,
+          title: `${v.clinicalRiskTier} alert`,
+          description: v.clinicalGuidance,
           vital: v,
         });
       }

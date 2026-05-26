@@ -1,6 +1,8 @@
 export type Role = "nurse" | "doctor";
 
-export type RiskLevel = "Low" | "Moderate" | "High" | "Critical";
+export type RiskLevel = "Low" | "Moderate" | "Critical";
+export type ClinicalRiskTier = "LOW RISK" | "MODERATE RISK" | "CRITICAL RISK";
+export type GcsStatus = "Normal" | "Altered Mental Status";
 
 export interface User {
   id: string;
@@ -24,18 +26,21 @@ export interface VitalEntry {
   patientId: string;
   timestamp: string;
   temperature: number;
+  heartRate: number;
   respiratoryRate: number;
   systolicBP: number;
+  wbc?: number;
   mentalStatus: "Normal" | "Altered";
   gcsEye: number;
   gcsVerbal: number;
   gcsMotor: number;
   gcsTotal: number;
+  gcsStatus: GcsStatus;
   qsofa: number;
+  sirs: number;
   risk: RiskLevel;
-  confidence: number;
-  explanation: string;
-  recommendation: string;
+  clinicalRiskTier: ClinicalRiskTier;
+  clinicalGuidance: string;
   enteredBy: string;
 }
 

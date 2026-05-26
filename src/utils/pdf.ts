@@ -46,14 +46,12 @@ export function exportPatientPDF(opts: {
   doc.text("Current Assessment", 14, 66);
   doc.setFontSize(10);
   if (latest) {
-    doc.text(`qSOFA Score: ${latest.qsofa}`, 14, 73);
-    doc.text(`GCS Score: ${latest.gcsTotal}`, 70, 73);
-    doc.text(`Risk Level: ${latest.risk}`, 120, 73);
-    doc.text(`Confidence: ${(latest.confidence * 100).toFixed(0)}%`, 165, 73);
-    const exp = doc.splitTextToSize(`Explanation: ${latest.explanation}`, 180);
-    doc.text(exp, 14, 80);
-    const rec = doc.splitTextToSize(`Recommendation: ${latest.recommendation}`, 180);
-    doc.text(rec, 14, 80 + exp.length * 5);
+    doc.text(`qSOFA: ${latest.qsofa}`, 14, 73);
+    doc.text(`SIRS: ${latest.sirs}`, 50, 73);
+    doc.text(`GCS: ${latest.gcsTotal} (${latest.gcsStatus})`, 85, 73);
+    doc.text(`Tier: ${latest.clinicalRiskTier}`, 150, 73);
+    const guide = doc.splitTextToSize(`Clinical Guidance: ${latest.clinicalGuidance}`, 180);
+    doc.text(guide, 14, 80);
   } else {
     doc.text("No vitals recorded yet.", 14, 73);
   }
@@ -61,16 +59,18 @@ export function exportPatientPDF(opts: {
   // Vitals table
   autoTable(doc, {
     startY: 105,
-    head: [["Time", "Temp °C", "RR", "SBP", "Mental", "GCS", "qSOFA", "Risk"]],
+    head: [["Time", "Temp °C", "HR", "RR", "SBP", "WBC", "GCS", "qSOFA", "SIRS", "Tier"]],
     body: vitals.map((v) => [
       new Date(v.timestamp).toLocaleString(),
       v.temperature.toFixed(1),
+      v.heartRate,
       v.respiratoryRate,
       v.systolicBP,
-      v.mentalStatus,
+      v.wbc ?? "—",
       v.gcsTotal,
       v.qsofa,
-      v.risk,
+      v.sirs,
+      v.clinicalRiskTier,
     ]),
     headStyles: { fillColor: [28, 165, 175] },
     styles: { fontSize: 8 },

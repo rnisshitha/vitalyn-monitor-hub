@@ -35,8 +35,8 @@ function DoctorDashboard() {
         const ws = patients.filter((p) => p.ward === w);
         const risks = ws.map((p) => latestVital(vitals.filter((v) => v.patientId === p.id))?.risk);
         const critical = risks.filter((r) => r === "Critical").length;
-        const high = risks.filter((r) => r === "High").length;
-        return { ward: w, count: ws.length, critical, high };
+        const moderate = risks.filter((r) => r === "Moderate").length;
+        return { ward: w, count: ws.length, critical, moderate };
       }),
     [wards, patients, vitals],
   );
@@ -45,7 +45,7 @@ function DoctorDashboard() {
     selectedWard === "all" ? patients : patients.filter((p) => p.ward === selectedWard);
 
   const sorted = [...visiblePatients].sort((a, b) => {
-    const order = { Critical: 0, High: 1, Moderate: 2, Low: 3 } as const;
+    const order = { Critical: 0, Moderate: 1, Low: 2 } as const;
     const ra = latestVital(vitals.filter((v) => v.patientId === a.id))?.risk ?? "Low";
     const rb = latestVital(vitals.filter((v) => v.patientId === b.id))?.risk ?? "Low";
     return order[ra] - order[rb];
@@ -72,7 +72,7 @@ function DoctorDashboard() {
               label={s.ward}
               count={s.count}
               critical={s.critical}
-              high={s.high}
+              moderate={s.moderate}
               active={selectedWard === s.ward}
               onClick={() => setSelectedWard(s.ward)}
             />
@@ -96,9 +96,9 @@ function DoctorDashboard() {
 }
 
 function WardTile({
-  label, count, critical = 0, high = 0, active, onClick,
+  label, count, critical = 0, moderate = 0, active, onClick,
 }: {
-  label: string; count: number; critical?: number; high?: number; active: boolean; onClick: () => void;
+  label: string; count: number; critical?: number; moderate?: number; active: boolean; onClick: () => void;
 }) {
   return (
     <Card className={`cursor-pointer transition ${active ? "ring-2 ring-primary" : "hover:shadow-md"}`} onClick={onClick}>
@@ -112,8 +112,8 @@ function WardTile({
         </div>
         <div className="mt-3 flex gap-2">
           {critical > 0 && <RiskBadge risk="Critical" />}
-          {high > 0 && <RiskBadge risk="High" />}
-          {critical === 0 && high === 0 && (
+          {moderate > 0 && <RiskBadge risk="Moderate" />}
+          {critical === 0 && moderate === 0 && (
             <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground">
               Stable
             </Button>

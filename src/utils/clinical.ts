@@ -1,65 +1,68 @@
-import type { RiskLevel, VitalEntry } from "@/types";
+import type { ClinicalRiskTier, GcsStatus, RiskLevel, VitalEntry } from "@/types";
 
 export function calculateGCS(eye: number, verbal: number, motor: number) {
   return eye + verbal + motor;
 }
 
+export function gcsStatus(gcsTotal: number): GcsStatus {
+  return gcsTotal < 15 ? "Altered Mental Status" : "Normal";
+}
+
 export function calculateQSOFA(opts: {
   respiratoryRate: number;
   systolicBP: number;
-  mentalStatus: "Normal" | "Altered";
   gcsTotal: number;
 }) {
   let score = 0;
   if (opts.respiratoryRate >= 22) score++;
   if (opts.systolicBP <= 100) score++;
-  if (opts.mentalStatus === "Altered" || opts.gcsTotal <= 14) score++;
+  if (opts.gcsTotal < 15) score++;
   return score;
 }
 
-export function getRiskLevel(qsofa: number): RiskLevel {
-  if (qsofa <= 0) return "Low";
-  if (qsofa === 1) return "Moderate";
-  if (qsofa === 2) return "High";
-  return "Critical";
-}
-
-export function generateConfidence(qsofa: number, gcsTotal: number) {
-  const base = 0.7 + qsofa * 0.07;
-  const gcsAdj = gcsTotal < 15 ? (15 - gcsTotal) * 0.01 : 0;
-  return Math.min(0.98, base + gcsAdj);
-}
-
-export function generateExplanation(v: {
-  respiratoryRate: number;
-  systolicBP: number;
-  mentalStatus: string;
-  gcsTotal: number;
+export function calculateSIRS(opts: {
   temperature: number;
-  qsofa: number;
+  heartRate: number;
+  respiratoryRate: number;
+  wbc?: number;
 }) {
-  const reasons: string[] = [];
-  if (v.respiratoryRate >= 22) reasons.push(`elevated respiratory rate (${v.respiratoryRate}/min)`);
-  if (v.systolicBP <= 100) reasons.push(`low systolic BP (${v.systolicBP} mmHg)`);
-  if (v.mentalStatus === "Altered") reasons.push("altered mental status");
-  if (v.gcsTotal <= 14) reasons.push(`reduced GCS (${v.gcsTotal})`);
-  if (v.temperature >= 38) reasons.push(`fever (${v.temperature}°C)`);
-  if (v.temperature <= 36) reasons.push(`hypothermia (${v.temperature}°C)`);
-  if (reasons.length === 0) return "All monitored parameters are within normal ranges.";
-  return `Risk indicators detected: ${reasons.join(", ")}.`;
+  let score = 0;
+  if (opts.temperature < 36.0 || opts.temperature > 38.0) score++;
+  if (opts.heartRate > 90) score++;
+  if (opts.respiratoryRate > 20) score++;
+  if (opts.wbc !== undefined && !isNaN(opts.wbc)) {
+    if (opts.wbc < 4.0 || opts.wbc > 12.0) score++;
+  }
+  return score;
 }
 
-export function generateRecommendation(risk: RiskLevel) {
-  switch (risk) {
-    case "Low":
-      return "Continue routine monitoring every 4 hours.";
-    case "Moderate":
-      return "Increase monitoring frequency to every 2 hours. Notify charge nurse.";
-    case "High":
-      return "Notify attending physician immediately. Initiate sepsis bundle workup (lactate, cultures).";
-    case "Critical":
-      return "Rapid response activation. Consider ICU transfer, broad-spectrum antibiotics within 1 hour, fluid resuscitation.";
+export function evaluateClinicalRisk(opts: {
+  qsofa: number;
+  sirs: number;
+  altered: boolean;
+}): { tier: ClinicalRiskTier; risk: RiskLevel; guidance: string } {
+  const { qsofa, sirs, altered } = opts;
+  if (qsofa >= 2 || (sirs >= 2 && altered)) {
+    return {
+      tier: "CRITICAL RISK",
+      risk: "Critical",
+      guidance:
+        "Initiate Sepsis Hour-1 Bundle immediately: obtain lactate, blood cultures before antibiotics, administer broad-spectrum antibiotics, begin 30 mL/kg crystalloid fluid resuscitation, apply vasopressors if MAP < 65 after fluids. Escalate to ICU.",
+    };
   }
+  if (qsofa === 1 || sirs >= 2) {
+    return {
+      tier: "MODERATE RISK",
+      risk: "Moderate",
+      guidance:
+        "Re-evaluate full vitals in 1 hour. Draw lactate and CBC. Maintain continuous monitoring and prepare sepsis workup if scores trend upward.",
+    };
+  }
+  return {
+    tier: "LOW RISK",
+    risk: "Low",
+    guidance: "Continue standard monitoring. Re-evaluate vitals in 4 hours.",
+  };
 }
 
 export function riskColor(risk: RiskLevel) {
@@ -68,8 +71,6 @@ export function riskColor(risk: RiskLevel) {
       return "risk-low";
     case "Moderate":
       return "risk-moderate";
-    case "High":
-      return "risk-high";
     case "Critical":
       return "risk-critical";
   }
