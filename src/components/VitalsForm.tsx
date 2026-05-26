@@ -96,7 +96,7 @@ export function VitalsForm({ patientId }: { patientId: string }) {
         qsofa,
       }),
       recommendation: generateRecommendation(risk),
-      enteredBy: user?.fullName || user?.ward || "Sarah Nguyen",
+      enteredBy: user?.fullName || user?.ward || "Unknown",
     };
     addVital(v);
     setResult(v);
