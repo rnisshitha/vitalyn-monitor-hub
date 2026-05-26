@@ -126,14 +126,22 @@ function PatientPage() {
                     </CardContent>
                   </Card>
                   <Card>
-                    <CardHeader><CardTitle className="text-base">Latest analysis</CardTitle></CardHeader>
+                    <CardHeader><CardTitle className="text-base">CDSS Assessment</CardTitle></CardHeader>
                     <CardContent className="space-y-2 text-sm">
                       {latest ? (
                         <>
-                          <p>{latest.explanation}</p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs uppercase text-muted-foreground">Tier</span>
+                            <span className="font-mono text-xs font-semibold">{latest.clinicalRiskTier}</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-center">
+                            <Info label="qSOFA" value={latest.qsofa} />
+                            <Info label="SIRS" value={latest.sirs} />
+                            <Info label="GCS" value={latest.gcsTotal} />
+                          </div>
                           <div className="rounded-md bg-muted/60 p-2">
-                            <div className="text-xs uppercase text-muted-foreground">Recommendation</div>
-                            <div>{latest.recommendation}</div>
+                            <div className="text-xs uppercase text-muted-foreground">Guidance</div>
+                            <div>{latest.clinicalGuidance}</div>
                           </div>
                         </>
                       ) : (
