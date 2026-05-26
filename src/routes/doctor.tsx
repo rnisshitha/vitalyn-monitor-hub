@@ -15,13 +15,19 @@ export const Route = createFileRoute("/doctor")({
 });
 
 function DoctorDashboard() {
-  const { user, wards, patients, vitals } = useVitalyn();
+  const { user, patients, vitals } = useVitalyn();
   const navigate = useNavigate();
   useEffect(() => {
     if (!user) navigate({ to: "/login" });
   }, [user, navigate]);
 
   const [selectedWard, setSelectedWard] = useState<string | "all">("all");
+
+  // Derive wards from current patients so doctors see real wards in use.
+  const wards = useMemo(
+    () => Array.from(new Set(patients.map((p) => p.ward))).sort(),
+    [patients],
+  );
 
   const wardStats = useMemo(
     () =>

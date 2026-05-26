@@ -18,11 +18,11 @@ import { useVitalyn } from "@/hooks/useVitalynStore";
 export function AddPatientModal({ defaultWard }: { defaultWard?: string }) {
   const { addPatient, user } = useVitalyn();
   const [open, setOpen] = useState(false);
-  const [nurseName, setNurseName] = useState(user?.fullName || "Sarah Nguyen");
+  const [nurseName, setNurseName] = useState(user?.fullName || "");
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [bed, setBed] = useState("");
-  const [ward, setWard] = useState(defaultWard || user?.ward || "ICU-3");
+  const [ward, setWard] = useState(defaultWard || user?.ward || "");
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
