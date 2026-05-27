@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RiskBadge } from "@/components/RiskBadge";
-import type { VitalEntry } from "@/types";
+import type { GcsStatus, RiskLevel, VitalEntry } from "@/types";
 import {
   calculateGCS,
   calculateQSOFA,
