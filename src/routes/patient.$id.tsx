@@ -30,10 +30,10 @@ function PatientPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const {
-    user, patients, patientVitals, patientNotes, patientAcks, patientAudits,
+    user, hydrated, patients, patientVitals, patientNotes, patientAcks, patientAudits,
   } = useVitalyn();
 
-  useEffect(() => { if (!user) navigate({ to: "/login" }); }, [user, navigate]);
+  useEffect(() => { if (hydrated && !user) navigate({ to: "/login" }); }, [user, hydrated, navigate]);
 
   const patient = patients.find((p) => p.id === id);
   const [section, setSection] = useState<Section>("overview");
