@@ -114,14 +114,6 @@ export function VitalsForm({ patientId }: { patientId: string }) {
     toast.success(`CDSS evaluation complete — ${evalResult.tier}`);
   }
 
-  const cdssJson = {
-    gcs_total: gcs,
-    gcs_status: status,
-    qsofa_score: qsofa,
-    sirs_score: sirs,
-    clinical_risk_tier: evalResult.tier,
-    clinical_guidance: evalResult.guidance,
-  };
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
