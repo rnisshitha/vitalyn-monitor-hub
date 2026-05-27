@@ -345,11 +345,3 @@ function Score({ label, value, max }: { label: string; value: number; max: numbe
   );
 }
 
-function ScoreSmall({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-md bg-muted/50 p-2 text-center">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="font-mono text-base font-semibold tabular-nums">{value}</div>
-    </div>
-  );
-}
