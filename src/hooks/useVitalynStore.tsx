@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type {
   Acknowledgement,
   AuditEntry,
@@ -12,6 +12,7 @@ import { ACKS, AUDIT, NOTES, PATIENTS, VITALS, WARDS } from "@/data/mockData";
 
 interface VitalynContextValue {
   user: User | null;
+  hydrated: boolean;
   login: (u: User) => void;
   logout: () => void;
   wards: string[];
@@ -37,17 +38,37 @@ function uid(prefix = "id") {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+const USER_KEY = "vitalyn.user";
+
 export function VitalynProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [hydrated, setHydrated] = useState(false);
   const [patients, setPatients] = useState<Patient[]>(PATIENTS);
   const [vitals, setVitals] = useState<VitalEntry[]>(VITALS);
   const [notes, setNotes] = useState<DoctorNote[]>(NOTES);
   const [acks, setAcks] = useState<Acknowledgement[]>(ACKS);
   const [audits, setAudits] = useState<AuditEntry[]>(AUDIT);
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(USER_KEY);
+      if (raw) setUser(JSON.parse(raw));
+    } catch {}
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+      else localStorage.removeItem(USER_KEY);
+    } catch {}
+  }, [user, hydrated]);
+
   const value = useMemo<VitalynContextValue>(
     () => ({
       user,
+      hydrated,
       login: (u) => setUser(u),
       logout: () => setUser(null),
       wards: WARDS,
@@ -141,7 +162,7 @@ export function VitalynProvider({ children }: { children: ReactNode }) {
           .filter((a) => a.patientId === id)
           .sort((a, b) => +new Date(b.timestamp) - +new Date(a.timestamp)),
     }),
-    [user, patients, vitals, notes, acks, audits],
+    [user, hydrated, patients, vitals, notes, acks, audits],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
