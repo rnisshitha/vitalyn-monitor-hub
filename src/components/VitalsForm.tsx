@@ -181,72 +181,117 @@ export function VitalsForm({ patientId }: { patientId: string }) {
 
       <Card className="border-border/60">
         <CardHeader className="border-b border-border/60">
-          <CardTitle className="text-base">CDSS Output</CardTitle>
+          <CardTitle className="text-base">CDSS Assessment</CardTitle>
           <p className="text-xs text-muted-foreground">
-            Protocol-driven assessment (qSOFA · SIRS · GCS).
+            Protocol-driven evaluation using qSOFA · SIRS · GCS.
           </p>
         </CardHeader>
         <CardContent className="pt-6">
-          {!result ? (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Live preview — click <strong className="text-foreground">Run CDSS Evaluation</strong> to record.
-              </p>
-              <pre className="overflow-x-auto rounded-md border border-border/60 bg-muted/40 p-3 font-mono text-[11px] leading-relaxed">
-{JSON.stringify(cdssJson, null, 2)}
-              </pre>
-            </div>
-          ) : (
-            <div className="space-y-4 text-sm">
-              <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Clinical Risk Tier
-                  </span>
-                  <RiskBadge risk={result.risk} />
-                </div>
-                <div className="mt-1 font-mono text-sm font-semibold">{result.clinicalRiskTier}</div>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <ScoreSmall label="qSOFA" value={result.qsofa} />
-                <ScoreSmall label="SIRS" value={result.sirs} />
-                <ScoreSmall label="GCS" value={result.gcsTotal} />
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">GCS Status</div>
-                <div className="mt-0.5 font-medium">{result.gcsStatus}</div>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Clinical Guidance
-                </div>
-                <p className="mt-1 rounded-md border border-border/60 bg-background p-2 text-sm">
-                  {result.clinicalGuidance}
-                </p>
-              </div>
-              <details className="rounded-md border border-border/60 bg-muted/30 p-2">
-                <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
-                  Raw JSON
-                </summary>
-                <pre className="mt-2 overflow-x-auto font-mono text-[11px] leading-relaxed">
-{JSON.stringify(
-  {
-    gcs_total: result.gcsTotal,
-    gcs_status: result.gcsStatus,
-    qsofa_score: result.qsofa,
-    sirs_score: result.sirs,
-    clinical_risk_tier: result.clinicalRiskTier,
-    clinical_guidance: result.clinicalGuidance,
-  },
-  null,
-  2,
-)}
-                </pre>
-              </details>
-            </div>
-          )}
+          <CdssReport
+            recorded={!!result}
+            gcs={result?.gcsTotal ?? gcs}
+            gcsStatus={result?.gcsStatus ?? status}
+            qsofa={result?.qsofa ?? qsofa}
+            sirs={result?.sirs ?? sirs}
+            tier={result?.clinicalRiskTier ?? evalResult.tier}
+            risk={result?.risk ?? evalResult.risk}
+            guidance={result?.clinicalGuidance ?? evalResult.guidance}
+            hasWbc={wbc !== ""}
+          />
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function CdssReport({
+  recorded, gcs, gcsStatus, qsofa, sirs, tier, risk, guidance, hasWbc,
+}: {
+  recorded: boolean;
+  gcs: number;
+  gcsStatus: GcsStatus;
+  qsofa: number;
+  sirs: number;
+  tier: string;
+  risk: RiskLevel;
+  guidance: string;
+  hasWbc: boolean;
+}) {
+  const tierIcon =
+    risk === "Critical" ? <ShieldAlert className="size-5" /> :
+    risk === "Moderate" ? <AlertTriangle className="size-5" /> :
+    <CheckCircle2 className="size-5" />;
+
+  const tierTone =
+    risk === "Critical" ? "border-[var(--risk-critical)]/40 bg-[var(--risk-critical)]/10 text-[var(--risk-critical)]" :
+    risk === "Moderate" ? "border-[var(--risk-moderate)]/50 bg-[var(--risk-moderate)]/15 text-[oklch(0.45_0.13_85)]" :
+    "border-[var(--risk-low)]/40 bg-[var(--risk-low)]/10 text-[var(--risk-low)]";
+
+  const qsofaDetail =
+    qsofa >= 2 ? "≥2 criteria met — high suspicion of sepsis." :
+    qsofa === 1 ? "1 criterion met — monitor closely." :
+    "No qSOFA criteria met.";
+  const sirsDetail =
+    sirs >= 2 ? "≥2 SIRS criteria — systemic inflammatory response present." :
+    sirs === 1 ? "1 SIRS criterion met." :
+    "No SIRS criteria met.";
+  const gcsDetail =
+    gcsStatus === "Altered Mental Status"
+      ? `GCS ${gcs}/15 — altered mental status.`
+      : `GCS ${gcs}/15 — neurologically intact.`;
+
+  return (
+    <div className="space-y-4">
+      {!recorded && (
+        <p className="text-xs text-muted-foreground">
+          Live preview based on current inputs. Click <strong className="text-foreground">Run CDSS Evaluation</strong> to record into the patient timeline.
+        </p>
+      )}
+
+      <div className={`flex items-start gap-3 rounded-xl border p-4 ${tierTone}`}>
+        <div className="mt-0.5">{tierIcon}</div>
+        <div className="flex-1">
+          <div className="text-[10px] uppercase tracking-widest opacity-80">Clinical Risk Tier</div>
+          <div className="mt-0.5 text-lg font-bold leading-tight">{tier}</div>
+          <p className="mt-1 text-xs text-foreground/80">{guidance}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <ScoreTile label="qSOFA" value={qsofa} max={3} />
+        <ScoreTile label="SIRS" value={sirs} max={hasWbc ? 4 : 3} />
+        <ScoreTile label="GCS" value={gcs} max={15} />
+      </div>
+
+      <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3">
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          Explanation
+        </div>
+        <ExplainRow icon={<Activity className="size-3.5" />} text={qsofaDetail} />
+        <ExplainRow icon={<HeartPulse className="size-3.5" />} text={sirsDetail} />
+        <ExplainRow icon={<Brain className="size-3.5" />} text={gcsDetail} />
+      </div>
+    </div>
+  );
+}
+
+function ExplainRow({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <div className="flex items-start gap-2 text-xs text-foreground/85">
+      <span className="mt-0.5 text-primary">{icon}</span>
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function ScoreTile({ label, value, max }: { label: string; value: number; max: number }) {
+  return (
+    <div className="rounded-lg border border-border/60 bg-background p-2.5 text-center">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-0.5 font-mono text-base font-bold tabular-nums">
+        {value}
+        <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">/{max}</span>
+      </div>
     </div>
   );
 }
