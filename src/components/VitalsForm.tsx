@@ -21,7 +21,7 @@ import {
 } from "@/utils/clinical";
 import { useVitalyn } from "@/hooks/useVitalynStore";
 import { toast } from "sonner";
-import { Activity, HeartPulse, Sparkles, Stethoscope, Thermometer, Wind } from "lucide-react";
+import { Activity, AlertTriangle, Brain, CheckCircle2, HeartPulse, ShieldAlert, Sparkles, Stethoscope, Thermometer, Wind } from "lucide-react";
 
 const eyeOptions = [
   { v: 4, l: "4 — Spontaneous" },
