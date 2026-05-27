@@ -68,6 +68,7 @@ export function VitalynProvider({ children }: { children: ReactNode }) {
   const value = useMemo<VitalynContextValue>(
     () => ({
       user,
+      hydrated,
       login: (u) => setUser(u),
       logout: () => setUser(null),
       wards: WARDS,
