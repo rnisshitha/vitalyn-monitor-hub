@@ -12,6 +12,7 @@ import { ACKS, AUDIT, NOTES, PATIENTS, VITALS, WARDS } from "@/data/mockData";
 
 interface VitalynContextValue {
   user: User | null;
+  hydrated: boolean;
   login: (u: User) => void;
   logout: () => void;
   wards: string[];
