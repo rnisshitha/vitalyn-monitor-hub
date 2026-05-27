@@ -162,7 +162,7 @@ export function VitalynProvider({ children }: { children: ReactNode }) {
           .filter((a) => a.patientId === id)
           .sort((a, b) => +new Date(b.timestamp) - +new Date(a.timestamp)),
     }),
-    [user, patients, vitals, notes, acks, audits],
+    [user, hydrated, patients, vitals, notes, acks, audits],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
