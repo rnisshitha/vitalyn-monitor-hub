@@ -18,11 +18,11 @@ export const Route = createFileRoute("/nurse")({
 });
 
 function NurseDashboard() {
-  const { user, patients, vitals } = useVitalyn();
+  const { user, hydrated, patients, vitals } = useVitalyn();
   const navigate = useNavigate();
   useEffect(() => {
-    if (!user) navigate({ to: "/login" });
-  }, [user, navigate]);
+    if (hydrated && !user) navigate({ to: "/login" });
+  }, [user, hydrated, navigate]);
 
   const [q, setQ] = useState("");
   const [risk, setRisk] = useState<"all" | RiskLevel>("all");
