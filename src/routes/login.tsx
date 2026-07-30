@@ -127,6 +127,8 @@ function Feature({ icon, text }: { icon: React.ReactNode; text: string }) {
 
 const HOSPITAL_DOMAINS = ["hospital.org", "hospital.com", "health.org", "med.org", "clinic.org"];
 
+const ALLOW_ANY_EMAIL = true;
+
 function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const { login } = useVitalyn();
   const navigate = useNavigate();
@@ -146,10 +148,8 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
     if (!email) return null;
     const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (!ok) return false;
-    if (isSignup) {
-      return HOSPITAL_DOMAINS.some((d) => email.toLowerCase().endsWith("@" + d) || email.toLowerCase().endsWith("." + d));
-    }
-    return true;
+    if (ALLOW_ANY_EMAIL || !isSignup) return true;
+    return HOSPITAL_DOMAINS.some((d) => email.toLowerCase().endsWith("@" + d) || email.toLowerCase().endsWith("." + d));
   }, [email, isSignup]);
 
   const pwStrength = useMemo(() => {
@@ -208,7 +208,7 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
       </div>
 
       {/* Email */}
-      <Field label="Hospital Email" error={isSignup && emailValid === false ? "Must be a valid hospital email." : undefined}>
+      <Field label="Hospital Email" error={isSignup && emailValid === false ? "Must be a valid email address." : undefined}>
         <InputIcon icon={<Mail className="size-4" />}>
           <Input
             type="email"
