@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Activity, Bell, LogOut, User2 } from "lucide-react";
+import { Activity, Bell, LogOut, RotateCcw, User2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,9 +10,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useVitalyn } from "@/hooks/useVitalynStore";
+import { toast } from "sonner";
 
 export function TopBar({ subtitle }: { subtitle?: string }) {
-  const { user, logout } = useVitalyn();
+  const { user, logout, resetAll } = useVitalyn();
   const navigate = useNavigate();
   return (
     <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur">
@@ -48,6 +49,14 @@ export function TopBar({ subtitle }: { subtitle?: string }) {
                 <div className="mt-1 text-xs capitalize text-primary">{user?.role}</div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  resetAll();
+                  toast.success("Local test data cleared");
+                }}
+              >
+                <RotateCcw className="mr-2 size-4" /> Clear local data
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
                   logout();

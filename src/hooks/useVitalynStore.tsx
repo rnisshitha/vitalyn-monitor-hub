@@ -15,6 +15,7 @@ interface VitalynContextValue {
   hydrated: boolean;
   login: (u: User) => void;
   logout: () => void;
+  resetAll: () => void;
   wards: string[];
   patients: Patient[];
   vitals: VitalEntry[];
@@ -39,6 +40,17 @@ function uid(prefix = "id") {
 }
 
 const USER_KEY = "vitalyn.user";
+const VERSION_KEY = "vitalyn.version";
+const STORAGE_VERSION = "2";
+
+/** Removes every Vitalyn key from localStorage (leftover demo/mock data included). */
+function purgeStorage() {
+  try {
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith("vitalyn."))
+      .forEach((k) => localStorage.removeItem(k));
+  } catch {}
+}
 
 export function VitalynProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -51,8 +63,14 @@ export function VitalynProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(USER_KEY);
-      if (raw) setUser(JSON.parse(raw));
+      // Any storage written by an older build is stale demo data — drop it.
+      if (localStorage.getItem(VERSION_KEY) !== STORAGE_VERSION) {
+        purgeStorage();
+        localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
+      } else {
+        const raw = localStorage.getItem(USER_KEY);
+        if (raw) setUser(JSON.parse(raw));
+      }
     } catch {}
     setHydrated(true);
   }, []);
@@ -65,12 +83,34 @@ export function VitalynProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [user, hydrated]);
 
+  function resetState() {
+    setPatients([]);
+    setVitals([]);
+    setNotes([]);
+    setAcks([]);
+    setAudits([]);
+  }
+
   const value = useMemo<VitalynContextValue>(
     () => ({
       user,
       hydrated,
       login: (u) => setUser(u),
-      logout: () => setUser(null),
+      logout: () => {
+        purgeStorage();
+        try {
+          localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
+        } catch {}
+        resetState();
+        setUser(null);
+      },
+      resetAll: () => {
+        purgeStorage();
+        try {
+          localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
+        } catch {}
+        resetState();
+      },
       wards: WARDS,
       patients,
       vitals,

@@ -138,7 +138,6 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<Role | "">("");
   const [fullName, setFullName] = useState("");
-  const [doctorId, setDoctorId] = useState("");
   const [ward, setWard] = useState("");
   const [remember, setRemember] = useState(true);
 
@@ -172,15 +171,14 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
       if (!pwMatch) return false;
       if (!fullName.trim()) return false;
       if (!role) return false;
-      if (role === "doctor" && !doctorId.trim()) return false;
       if (role === "nurse" && !ward.trim()) return false;
     } else {
       if (!role) return false;
-      if (role === "doctor" && !doctorId.trim()) return false;
+      if (!fullName.trim()) return false;
       if (role === "nurse" && !ward.trim()) return false;
     }
     return true;
-  }, [email, password, isSignup, emailValid, pwStrength, pwMatch, fullName, role, doctorId, ward]);
+  }, [email, password, isSignup, emailValid, pwStrength, pwMatch, fullName, role, ward]);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -189,7 +187,7 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
       id: `u-${Date.now()}`,
       email,
       role: role as Role,
-      fullName: role === "doctor" ? (fullName || doctorId) : fullName || undefined,
+      fullName: fullName.trim() || undefined,
       ward: role === "nurse" ? ward : undefined,
     });
     toast.success(isSignup ? "Account created — welcome to Vitalyn" : "Welcome back");
@@ -263,14 +261,14 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
         </Field>
       )}
 
-      {/* Full Name (signup) */}
-      {isSignup && (
-        <Field label="Full Name">
+      {/* Full Name */}
+      {(isSignup || !!role) && (
+        <Field label={role === "doctor" ? "Doctor Name" : "Full Name"}>
           <InputIcon icon={<User className="size-4" />}>
             <Input
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              placeholder="Jane Doe"
+              placeholder={role === "doctor" ? "Dr. Jane Doe" : "Jane Doe"}
               className="h-11 pl-10"
               required
             />
@@ -296,18 +294,6 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
       </Field>
 
       {/* Dynamic role fields */}
-      {role === "doctor" && (
-        <Field label={isSignup ? "Doctor ID" : "Doctor Name / ID"}>
-          <InputIcon icon={<Stethoscope className="size-4" />}>
-            <Input
-              value={doctorId}
-              onChange={(e) => setDoctorId(e.target.value)}
-              placeholder="DR-1042 or Dr. Jane Doe"
-              className="h-11 pl-10"
-            />
-          </InputIcon>
-        </Field>
-      )}
       {role === "nurse" && (
         <Field label="Ward Number">
           <InputIcon icon={<BedDouble className="size-4" />}>
