@@ -148,10 +148,8 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
     if (!email) return null;
     const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (!ok) return false;
-    if (isSignup) {
-      return HOSPITAL_DOMAINS.some((d) => email.toLowerCase().endsWith("@" + d) || email.toLowerCase().endsWith("." + d));
-    }
-    return true;
+    if (ALLOW_ANY_EMAIL || !isSignup) return true;
+    return HOSPITAL_DOMAINS.some((d) => email.toLowerCase().endsWith("@" + d) || email.toLowerCase().endsWith("." + d));
   }, [email, isSignup]);
 
   const pwStrength = useMemo(() => {
