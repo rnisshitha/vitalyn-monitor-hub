@@ -15,6 +15,7 @@ interface VitalynContextValue {
   hydrated: boolean;
   login: (u: User) => void;
   logout: () => void;
+  resetAll: () => void;
   wards: string[];
   patients: Patient[];
   vitals: VitalEntry[];
