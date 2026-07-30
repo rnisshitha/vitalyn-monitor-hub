@@ -208,7 +208,7 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
       </div>
 
       {/* Email */}
-      <Field label="Hospital Email" error={isSignup && emailValid === false ? "Must be a valid hospital email." : undefined}>
+      <Field label="Hospital Email" error={isSignup && emailValid === false ? "Must be a valid email address." : undefined}>
         <InputIcon icon={<Mail className="size-4" />}>
           <Input
             type="email"
