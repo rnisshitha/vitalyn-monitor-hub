@@ -127,6 +127,8 @@ function Feature({ icon, text }: { icon: React.ReactNode; text: string }) {
 
 const HOSPITAL_DOMAINS = ["hospital.org", "hospital.com", "health.org", "med.org", "clinic.org"];
 
+const ALLOW_ANY_EMAIL = true;
+
 function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const { login } = useVitalyn();
   const navigate = useNavigate();
