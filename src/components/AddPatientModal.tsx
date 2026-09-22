@@ -14,9 +14,12 @@ import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useVitalyn } from "@/hooks/useVitalynStore";
+import { useCreatePatient } from "@/hooks/useClinicalQueries";
+import { errorMessage } from "@/lib/api";
 
 export function AddPatientModal({ defaultWard }: { defaultWard?: string }) {
-  const { addPatient, user } = useVitalyn();
+  const { user } = useVitalyn();
+  const createPatient = useCreatePatient();
   const [open, setOpen] = useState(false);
   const [nurseName, setNurseName] = useState(user?.fullName || "");
   const [name, setName] = useState("");
@@ -24,13 +27,17 @@ export function AddPatientModal({ defaultWard }: { defaultWard?: string }) {
   const [bed, setBed] = useState("");
   const [ward, setWard] = useState(defaultWard || user?.ward || "");
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!name || !age || !bed || !ward) return;
-    addPatient({ name, age: Number(age), bed, ward }, nurseName);
-    toast.success(`${name} admitted to ${ward}`);
-    setOpen(false);
-    setName(""); setAge(""); setBed("");
+    try {
+      await createPatient.mutateAsync({ name, age: Number(age), bed, ward });
+      toast.success(`${name} admitted to ${ward}`);
+      setOpen(false);
+      setName(""); setAge(""); setBed("");
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
   }
 
   return (
@@ -57,7 +64,9 @@ export function AddPatientModal({ defaultWard }: { defaultWard?: string }) {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit">Admit Patient</Button>
+            <Button type="submit" disabled={createPatient.isPending}>
+              {createPatient.isPending ? "Admitting…" : "Admit Patient"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

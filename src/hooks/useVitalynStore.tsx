@@ -1,208 +1,74 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type {
-  Acknowledgement,
-  AuditEntry,
-  DoctorNote,
-  Patient,
-  Role,
-  User,
-  VitalEntry,
-} from "@/types";
-import { ACKS, AUDIT, NOTES, PATIENTS, VITALS, WARDS } from "@/data/mockData";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Role, User } from "@/types";
+import { ApiError } from "@/lib/api";
+import { authApi, type LoginPayload, type SignupPayload } from "@/lib/resources";
 
+/**
+ * Global frontend state = authentication only.
+ * Clinical data lives in TanStack Query (see useClinicalQueries.ts) and is
+ * never persisted in localStorage/sessionStorage.
+ */
 interface VitalynContextValue {
   user: User | null;
+  /** Auth check against the server has finished. */
   hydrated: boolean;
-  login: (u: User) => void;
-  logout: () => void;
-  resetAll: () => void;
-  wards: string[];
-  patients: Patient[];
-  vitals: VitalEntry[];
-  notes: DoctorNote[];
-  acks: Acknowledgement[];
-  audits: AuditEntry[];
-  addPatient: (p: Omit<Patient, "id" | "admittedAt">, nurseName: string) => Patient;
-  addVital: (v: VitalEntry) => void;
-  addNote: (n: DoctorNote) => void;
-  acknowledge: (patientId: string, vitalId: string, doctorName: string) => void;
-  addAudit: (a: Omit<AuditEntry, "id">) => void;
-  patientVitals: (id: string) => VitalEntry[];
-  patientNotes: (id: string) => DoctorNote[];
-  patientAcks: (id: string) => Acknowledgement[];
-  patientAudits: (id: string) => AuditEntry[];
+  isAuthenticated: boolean;
+  authError: unknown;
+  login: (payload: LoginPayload) => Promise<User>;
+  signup: (payload: SignupPayload) => Promise<User>;
+  logout: () => Promise<void>;
 }
 
 const Ctx = createContext<VitalynContextValue | null>(null);
 
-function uid(prefix = "id") {
-  return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-const USER_KEY = "vitalyn.user";
-const VERSION_KEY = "vitalyn.version";
-const STORAGE_VERSION = "2";
-
-/** Removes every Vitalyn key from localStorage (leftover demo/mock data included). */
-function purgeStorage() {
-  try {
-    Object.keys(localStorage)
-      .filter((k) => k.startsWith("vitalyn."))
-      .forEach((k) => localStorage.removeItem(k));
-  } catch {}
-}
+export const authMeKey = ["auth", "me"] as const;
 
 export function VitalynProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-  const [patients, setPatients] = useState<Patient[]>(PATIENTS);
-  const [vitals, setVitals] = useState<VitalEntry[]>(VITALS);
-  const [notes, setNotes] = useState<DoctorNote[]>(NOTES);
-  const [acks, setAcks] = useState<Acknowledgement[]>(ACKS);
-  const [audits, setAudits] = useState<AuditEntry[]>(AUDIT);
+  const qc = useQueryClient();
 
-  useEffect(() => {
-    try {
-      // Any storage written by an older build is stale demo data — drop it.
-      if (localStorage.getItem(VERSION_KEY) !== STORAGE_VERSION) {
-        purgeStorage();
-        localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
-      } else {
-        const raw = localStorage.getItem(USER_KEY);
-        if (raw) setUser(JSON.parse(raw));
-      }
-    } catch {}
-    setHydrated(true);
-  }, []);
+  const me = useQuery({
+    queryKey: authMeKey,
+    queryFn: authApi.me,
+    retry: false,
+    staleTime: 60_000,
+    // A 401 simply means "signed out" — surfaced as null, not an error state.
+    throwOnError: false,
+  });
 
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
-      else localStorage.removeItem(USER_KEY);
-    } catch {}
-  }, [user, hydrated]);
+  const loginMutation = useMutation({ mutationFn: authApi.login });
+  const signupMutation = useMutation({ mutationFn: authApi.signup });
+  const logoutMutation = useMutation({ mutationFn: authApi.logout });
 
-  function resetState() {
-    setPatients([]);
-    setVitals([]);
-    setNotes([]);
-    setAcks([]);
-    setAudits([]);
-  }
+  const unauthorized = me.error instanceof ApiError && me.error.isUnauthorized;
+  const user = me.data ?? null;
 
   const value = useMemo<VitalynContextValue>(
     () => ({
       user,
-      hydrated,
-      login: (u) => setUser(u),
-      logout: () => {
-        purgeStorage();
+      hydrated: !me.isPending,
+      isAuthenticated: !!user,
+      authError: unauthorized ? null : (me.error ?? null),
+      login: async (payload) => {
+        const u = await loginMutation.mutateAsync(payload);
+        qc.setQueryData(authMeKey, u);
+        return u;
+      },
+      signup: async (payload) => {
+        const u = await signupMutation.mutateAsync(payload);
+        qc.setQueryData(authMeKey, u);
+        return u;
+      },
+      logout: async () => {
         try {
-          localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
-        } catch {}
-        resetState();
-        setUser(null);
+          await logoutMutation.mutateAsync();
+        } finally {
+          qc.setQueryData(authMeKey, null);
+          qc.clear();
+        }
       },
-      resetAll: () => {
-        purgeStorage();
-        try {
-          localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
-        } catch {}
-        resetState();
-      },
-      wards: WARDS,
-      patients,
-      vitals,
-      notes,
-      acks,
-      audits,
-      addPatient: (p, nurseName) => {
-        const np: Patient = { ...p, id: uid("p"), admittedAt: new Date().toISOString() };
-        setPatients((prev) => [np, ...prev]);
-        setAudits((prev) => [
-          {
-            id: uid("au"),
-            patientId: np.id,
-            timestamp: new Date().toISOString(),
-            userName: nurseName,
-            role: "nurse",
-            action: "Patient admitted",
-            details: `${np.name} assigned to bed ${np.bed}, ward ${np.ward}`,
-          },
-          ...prev,
-        ]);
-        return np;
-      },
-      addVital: (v) => {
-        setVitals((prev) => [v, ...prev]);
-        setAudits((prev) => [
-          {
-            id: uid("au"),
-            patientId: v.patientId,
-            timestamp: v.timestamp,
-            userName: v.enteredBy,
-            role: "nurse",
-            action: "Vitals recorded",
-            details: `qSOFA=${v.qsofa}, GCS=${v.gcsTotal}, Risk=${v.risk}`,
-          },
-          ...prev,
-        ]);
-      },
-      addNote: (n) => {
-        setNotes((prev) => [n, ...prev]);
-        setAudits((prev) => [
-          {
-            id: uid("au"),
-            patientId: n.patientId,
-            timestamp: n.timestamp,
-            userName: n.doctorName,
-            role: "doctor",
-            action: "Added clinical note",
-            details: n.text.slice(0, 60) + (n.text.length > 60 ? "…" : ""),
-          },
-          ...prev,
-        ]);
-      },
-      acknowledge: (patientId, vitalId, doctorName) => {
-        const ack: Acknowledgement = {
-          id: uid("a"),
-          patientId,
-          vitalId,
-          timestamp: new Date().toISOString(),
-          doctorName,
-          status: "Acknowledged",
-        };
-        setAcks((prev) => [ack, ...prev]);
-        setAudits((prev) => [
-          {
-            id: uid("au"),
-            patientId,
-            timestamp: ack.timestamp,
-            userName: doctorName,
-            role: "doctor",
-            action: "Acknowledged high-risk alert",
-            details: `Vital ${vitalId} acknowledged`,
-          },
-          ...prev,
-        ]);
-      },
-      addAudit: (a) => setAudits((prev) => [{ ...a, id: uid("au") }, ...prev]),
-      patientVitals: (id) =>
-        vitals
-          .filter((v) => v.patientId === id)
-          .sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp)),
-      patientNotes: (id) =>
-        notes
-          .filter((n) => n.patientId === id)
-          .sort((a, b) => +new Date(b.timestamp) - +new Date(a.timestamp)),
-      patientAcks: (id) => acks.filter((a) => a.patientId === id),
-      patientAudits: (id) =>
-        audits
-          .filter((a) => a.patientId === id)
-          .sort((a, b) => +new Date(b.timestamp) - +new Date(a.timestamp)),
     }),
-    [user, hydrated, patients, vitals, notes, acks, audits],
+    [user, me.isPending, me.error, unauthorized, loginMutation, signupMutation, logoutMutation, qc],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
