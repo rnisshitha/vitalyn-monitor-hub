@@ -5,21 +5,34 @@ import { PatientCard } from "@/components/PatientCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useVitalyn } from "@/hooks/useVitalynStore";
+import { usePatients, useVitalsByPatient } from "@/hooks/useClinicalQueries";
+import { errorMessage } from "@/lib/api";
 import { latestVital } from "@/utils/clinical";
 import { RiskBadge } from "@/components/RiskBadge";
-import { Building2 } from "lucide-react";
+import { Building2, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/doctor")({
-  head: () => ({ meta: [{ title: "Doctor Dashboard — Vitalyn" }] }),
+  head: () => ({
+    meta: [
+      { title: "Doctor Dashboard — Vitalyn" },
+      { name: "description", content: "Review ward-level sepsis risk, acknowledge alerts and document care." },
+      { property: "og:title", content: "Doctor Dashboard — Vitalyn" },
+      { property: "og:description", content: "Review ward-level sepsis risk, acknowledge alerts and document care." },
+    ],
+  }),
   component: DoctorDashboard,
 });
 
 function DoctorDashboard() {
-  const { user, hydrated, patients, vitals } = useVitalyn();
+  const { user, hydrated } = useVitalyn();
   const navigate = useNavigate();
   useEffect(() => {
     if (hydrated && !user) navigate({ to: "/login" });
   }, [user, hydrated, navigate]);
+
+  const patientsQ = usePatients();
+  const patients = useMemo(() => patientsQ.data ?? [], [patientsQ.data]);
+  const { byPatient } = useVitalsByPatient(patients.map((p) => p.id));
 
   const [selectedWard, setSelectedWard] = useState<string | "all">("all");
 
@@ -33,12 +46,12 @@ function DoctorDashboard() {
     () =>
       wards.map((w) => {
         const ws = patients.filter((p) => p.ward === w);
-        const risks = ws.map((p) => latestVital(vitals.filter((v) => v.patientId === p.id))?.risk);
+        const risks = ws.map((p) => latestVital(byPatient[p.id] ?? [])?.risk);
         const critical = risks.filter((r) => r === "Critical").length;
         const moderate = risks.filter((r) => r === "Moderate").length;
         return { ward: w, count: ws.length, critical, moderate };
       }),
-    [wards, patients, vitals],
+    [wards, patients, byPatient],
   );
 
   const visiblePatients =
@@ -46,8 +59,8 @@ function DoctorDashboard() {
 
   const sorted = [...visiblePatients].sort((a, b) => {
     const order = { Critical: 0, Moderate: 1, Low: 2 } as const;
-    const ra = latestVital(vitals.filter((v) => v.patientId === a.id))?.risk ?? "Low";
-    const rb = latestVital(vitals.filter((v) => v.patientId === b.id))?.risk ?? "Low";
+    const ra = latestVital(byPatient[a.id] ?? [])?.risk ?? "Low";
+    const rb = latestVital(byPatient[b.id] ?? [])?.risk ?? "Low";
     return order[ra] - order[rb];
   });
 
@@ -62,7 +75,7 @@ function DoctorDashboard() {
           <WardTile
             label="All wards"
             count={patients.length}
-            critical={patients.filter((p) => latestVital(vitals.filter((v) => v.patientId === p.id))?.risk === "Critical").length}
+            critical={patients.filter((p) => latestVital(byPatient[p.id] ?? [])?.risk === "Critical").length}
             active={selectedWard === "all"}
             onClick={() => setSelectedWard("all")}
           />
@@ -85,11 +98,27 @@ function DoctorDashboard() {
           </h2>
           <span className="text-sm text-muted-foreground">{sorted.length} patients</span>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sorted.map((p) => (
-            <PatientCard key={p.id} patient={p} vitals={vitals.filter((v) => v.patientId === p.id)} />
-          ))}
-        </div>
+        {patientsQ.isLoading ? (
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/30 p-12 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Loading patients…
+          </div>
+        ) : patientsQ.isError ? (
+          <div className="rounded-xl border border-dashed bg-muted/30 p-12 text-center">
+            <p className="font-medium">Couldn't load patients</p>
+            <p className="text-sm text-muted-foreground">{errorMessage(patientsQ.error)}</p>
+          </div>
+        ) : sorted.length === 0 ? (
+          <div className="rounded-xl border border-dashed bg-muted/30 p-12 text-center">
+            <p className="font-medium">No patients to show</p>
+            <p className="text-sm text-muted-foreground">Patients admitted by nurses will appear here.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {sorted.map((p) => (
+              <PatientCard key={p.id} patient={p} vitals={byPatient[p.id] ?? []} />
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );

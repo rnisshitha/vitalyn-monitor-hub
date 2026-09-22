@@ -4,12 +4,24 @@ import {
 } from "@/components/ui/table";
 import type { AuditEntry } from "@/types";
 
-export function AuditLogs({ audits }: { audits: AuditEntry[] }) {
+export function AuditLogs({
+  audits,
+  loading = false,
+  error,
+}: {
+  audits: AuditEntry[];
+  loading?: boolean;
+  error?: string;
+}) {
   return (
     <Card>
       <CardHeader><CardTitle>Audit Logs</CardTitle></CardHeader>
       <CardContent>
-        {audits.length === 0 ? (
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading audit logs…</p>
+        ) : error ? (
+          <p className="text-sm text-muted-foreground">{error}</p>
+        ) : audits.length === 0 ? (
           <p className="text-sm text-muted-foreground">No audit entries yet.</p>
         ) : (
           <Table>
