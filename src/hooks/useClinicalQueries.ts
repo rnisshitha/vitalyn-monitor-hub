@@ -1,7 +1,13 @@
 /**
  * TanStack Query layer — the single source of truth for clinical server data.
  */
-import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   acksApi,
   auditApi,
@@ -58,9 +64,19 @@ export const useAcks = (id: string) => useQuery(acksQuery(id));
 export const useAudits = (id: string) => useQuery(auditsQuery(id));
 export const useTimeline = (id: string) => useQuery(timelineQuery(id));
 
-/** Vitals for every patient in one place (dashboards show latest risk per card). */
-export const usePatientVitals = (id: string, enabled = true) =>
-  useQuery({ ...vitalsQuery(id), enabled });
+/** Vitals for a set of patients, keyed by patient id (dashboard risk badges). */
+export function useVitalsByPatient(patientIds: string[]) {
+  return useQueries({
+    queries: patientIds.map((id) => vitalsQuery(id)),
+    combine: (results) => {
+      const map: Record<string, import("@/types").VitalEntry[]> = {};
+      patientIds.forEach((id, i) => {
+        map[id] = results[i]?.data ?? [];
+      });
+      return { byPatient: map, isLoading: results.some((r) => r.isLoading) };
+    },
+  });
+}
 
 /* ------------------------------- mutations ------------------------------ */
 
